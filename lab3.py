@@ -70,6 +70,19 @@ def traceback_needleman_wunsch(seq1, seq2, matrix, match_score=1, mismatch_score
     traceback_path.reverse()
     return alignment_a, alignment_b, traceback_path
 
+# Highlight function for traceback path
+def highlight_traceback(data, traceback_path):
+    def style_cell(row, col):
+        return 'background-color: lightgreen;' if (row, col) in traceback_path else ''
+
+    # Create a DataFrame of styles
+    styles = pd.DataFrame(
+        [[style_cell(row, col) for col in range(data.shape[1])] for row in range(data.shape[0])],
+        index=data.index,
+        columns=data.columns
+    )
+    return styles
+
 # Streamlit app
 st.title("Pairwise Sequence Alignment with Traceback")
 st.write("Compare two sequences using Needleman-Wunsch algorithm and visualize the traceback.")
@@ -99,10 +112,15 @@ if st.button("Align Sequences"):
         # Display the alignment matrix
         st.write("Alignment Matrix:")
         df_matrix = pd.DataFrame(matrix, index=["-"] + list(seq1), columns=["-"] + list(seq2))
-        st.dataframe(df_matrix.style.highlight_cells(
-            lambda x: [(r, c) in traceback_path for r, c in np.ndindex(x.shape)], 
-            props='background-color: lightgreen;'
-        ))
+
+        # Highlight the traceback
+        styled_df = df_matrix.style.apply(
+            lambda x: highlight_traceback(df_matrix, traceback_path),
+            axis=None
+        )
+
+        # Display styled DataFrame
+        st.dataframe(styled_df)
 
         # Display optimal alignment
         st.write("Optimal Alignment:")
