@@ -1,130 +1,122 @@
-import numpy as np
-import pandas as pd
 import streamlit as st
+import numpy as np
 
-# Function to initialize the matrix
-def initialize_matrix(seq1, seq2, gap_penalty=-2):
-    rows = len(seq1) + 1
-    cols = len(seq2) + 1
-    matrix = np.zeros((rows, cols), dtype=int)
+# Function to calculate the alignment score and matrix for global alignment
+def needleman_wunsch(seq1, seq2, match_score, mismatch_penalty, gap_penalty):
+    n, m = len(seq1), len(seq2)
+    matrix = np.zeros((n + 1, m + 1), dtype=int)
+    backtrace = np.zeros((n + 1, m + 1), dtype=tuple)
 
-    for i in range(1, rows):
-        matrix[i][0] = gap_penalty * i
-    for j in range(1, cols):
-        matrix[0][j] = gap_penalty * j
+    # Initialize the scoring matrix and backtrace pointers
+    for i in range(n + 1):
+        matrix[i][0] = i * gap_penalty
+    for j in range(m + 1):
+        matrix[0][j] = j * gap_penalty
 
-    return matrix
-
-# Function to fill the matrix for Needleman-Wunsch
-def fill_matrix_needleman_wunsch(seq1, seq2, matrix, match_score=1, mismatch_score=-1, gap_penalty=-2):
-    rows, cols = matrix.shape
-
-    for i in range(1, rows):
-        for j in range(1, cols):
-            match = matrix[i-1][j-1] + (match_score if seq1[i-1] == seq2[j-1] else mismatch_score)
-            delete = matrix[i-1][j] + gap_penalty
-            insert = matrix[i][j-1] + gap_penalty
+    # Fill the matrix
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            match = matrix[i - 1][j - 1] + (match_score if seq1[i - 1] == seq2[j - 1] else mismatch_penalty)
+            delete = matrix[i - 1][j] + gap_penalty
+            insert = matrix[i][j - 1] + gap_penalty
             matrix[i][j] = max(match, delete, insert)
 
-    return matrix
+            if matrix[i][j] == match:
+                backtrace[i][j] = (i - 1, j - 1)
+            elif matrix[i][j] == delete:
+                backtrace[i][j] = (i - 1, j)
+            else:
+                backtrace[i][j] = (i, j - 1)
 
-# Traceback function for Needleman-Wunsch
-def traceback_needleman_wunsch(seq1, seq2, matrix, match_score=1, mismatch_score=-1, gap_penalty=-2):
-    alignment_a, alignment_b = "", ""
-    traceback_path = []
-    i, j = len(seq1), len(seq2)
-
-    while i > 0 and j > 0:
-        traceback_path.append((i, j))
-        score_current = matrix[i][j]
-        score_diagonal = matrix[i-1][j-1]
-        score_up = matrix[i-1][j]
-        score_left = matrix[i][j-1]
-
-        if score_current == score_diagonal + (match_score if seq1[i-1] == seq2[j-1] else mismatch_score):
-            alignment_a = seq1[i-1] + alignment_a
-            alignment_b = seq2[j-1] + alignment_b
-            i -= 1
-            j -= 1
-        elif score_current == score_up + gap_penalty:
-            alignment_a = seq1[i-1] + alignment_a
-            alignment_b = "-" + alignment_b
+    # Traceback
+    aligned_seq1, aligned_seq2 = "", ""
+    i, j = n, m
+    while i > 0 or j > 0:
+        if i > 0 and j > 0 and backtrace[i][j] == (i - 1, j - 1):
+            aligned_seq1 = seq1[i - 1] + aligned_seq1
+            aligned_seq2 = seq2[j - 1] + aligned_seq2
+            i, j = i - 1, j - 1
+        elif i > 0 and backtrace[i][j] == (i - 1, j):
+            aligned_seq1 = seq1[i - 1] + aligned_seq1
+            aligned_seq2 = "-" + aligned_seq2
             i -= 1
         else:
-            alignment_a = "-" + alignment_a
-            alignment_b = seq2[j-1] + alignment_b
+            aligned_seq1 = "-" + aligned_seq1
+            aligned_seq2 = seq2[j - 1] + aligned_seq2
             j -= 1
 
-    while i > 0:
-        traceback_path.append((i, 0))
-        alignment_a = seq1[i-1] + alignment_a
-        alignment_b = "-" + alignment_b
-        i -= 1
+    return matrix, aligned_seq1, aligned_seq2
 
-    while j > 0:
-        traceback_path.append((0, j))
-        alignment_a = "-" + alignment_a
-        alignment_b = seq2[j-1] + alignment_b
-        j -= 1
+# Function to calculate the alignment score and matrix for local alignment
+def smith_waterman(seq1, seq2, match_score, mismatch_penalty, gap_penalty):
+    n, m = len(seq1), len(seq2)
+    matrix = np.zeros((n + 1, m + 1), dtype=int)
+    backtrace = np.zeros((n + 1, m + 1), dtype=tuple)
 
-    traceback_path.reverse()
-    return alignment_a, alignment_b, traceback_path
+    # Fill the matrix
+    max_score = 0
+    max_pos = None
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            match = matrix[i - 1][j - 1] + (match_score if seq1[i - 1] == seq2[j - 1] else mismatch_penalty)
+            delete = matrix[i - 1][j] + gap_penalty
+            insert = matrix[i][j - 1] + gap_penalty
+            matrix[i][j] = max(0, match, delete, insert)
 
-# Highlight function for traceback path
-def highlight_traceback(df, traceback_path):
-    styles = pd.DataFrame("", index=df.index, columns=df.columns)
-    for (row, col) in traceback_path:
-        styles.iloc[row, col] = "background-color: lightgreen;"
-    return styles
+            if matrix[i][j] == match:
+                backtrace[i][j] = (i - 1, j - 1)
+            elif matrix[i][j] == delete:
+                backtrace[i][j] = (i - 1, j)
+            elif matrix[i][j] == insert:
+                backtrace[i][j] = (i, j - 1)
 
-# Streamlit app
-st.title("Pairwise Sequence Alignment with Traceback")
-st.write("Compare two sequences using Needleman-Wunsch algorithm and visualize the traceback.")
+            if matrix[i][j] > max_score:
+                max_score = matrix[i][j]
+                max_pos = (i, j)
 
-# Input sequences
-seq1 = st.text_input("Enter Sequence 1").upper()
-seq2 = st.text_input("Enter Sequence 2").upper()
+    # Traceback
+    aligned_seq1, aligned_seq2 = "", ""
+    i, j = max_pos
+    while matrix[i][j] > 0:
+        if backtrace[i][j] == (i - 1, j - 1):
+            aligned_seq1 = seq1[i - 1] + aligned_seq1
+            aligned_seq2 = seq2[j - 1] + aligned_seq2
+            i, j = i - 1, j - 1
+        elif backtrace[i][j] == (i - 1, j):
+            aligned_seq1 = seq1[i - 1] + aligned_seq1
+            aligned_seq2 = "-" + aligned_seq2
+            i -= 1
+        else:
+            aligned_seq1 = "-" + aligned_seq1
+            aligned_seq2 = seq2[j - 1] + aligned_seq2
+            j -= 1
 
-# Parameters
-match_score = st.number_input("Match score", value=1, step=1)
-mismatch_score = st.number_input("Mismatch score", value=-1, step=1)
-gap_penalty = st.number_input("Gap penalty", value=-2, step=1)
+    return matrix, aligned_seq1, aligned_seq2
 
-if st.button("Align Sequences"):
-    if seq1 and seq2:
-        # Initialize the matrix
-        matrix = initialize_matrix(seq1, seq2, gap_penalty)
+# Streamlit application
+st.title("Sequence Alignment")
+st.sidebar.header("Alignment Parameters")
+seq1 = st.text_input("Enter the first sequence:", "ACGTG")
+seq2 = st.text_input("Enter the second sequence:", "ACTG")
+match_score = st.sidebar.number_input("Match score:", value=1, step=1)
+mismatch_penalty = st.sidebar.number_input("Mismatch penalty:", value=-1, step=1)
+gap_penalty = st.sidebar.number_input("Gap penalty:", value=-2, step=1)
+alignment_type = st.sidebar.radio("Choose alignment type:", ("Global", "Local"))
 
-        # Fill the matrix
-        matrix = fill_matrix_needleman_wunsch(seq1, seq2, matrix, match_score, mismatch_score, gap_penalty)
-
-        # Perform traceback
-        alignment_a, alignment_b, traceback_path = traceback_needleman_wunsch(
-            seq1, seq2, matrix, match_score, mismatch_score, gap_penalty
-        )
-
-        # Display the alignment matrix
-        st.write("Alignment Matrix:")
-        # Ensure unique index and column names
-        df_matrix = pd.DataFrame(matrix, index=["-"] + [f"S1_{i}" for i in seq1], columns=["-"] + [f"S2_{j}" for j in seq2])
-
-        # Highlight the traceback
-        styled_df = df_matrix.style.apply(
-            lambda _: highlight_traceback(df_matrix, traceback_path),
-            axis=None
-        )
-
-        # Display styled DataFrame
-        st.dataframe(styled_df)
-
-        # Display optimal alignment
-        st.write("Optimal Alignment:")
-        st.text(f"Sequence 1: {alignment_a}")
-        st.text(f"Sequence 2: {alignment_b}")
-
-        # Traceback path
-        st.write("Traceback Path (Row, Column):")
-        st.write(traceback_path)
-
+if st.button("Run Alignment"):
+    if alignment_type == "Global":
+        matrix, aligned_seq1, aligned_seq2 = needleman_wunsch(seq1, seq2, match_score, mismatch_penalty, gap_penalty)
     else:
-        st.warning("Please enter both sequences.")
+        matrix, aligned_seq1, aligned_seq2 = smith_waterman(seq1, seq2, match_score, mismatch_penalty, gap_penalty)
+
+    st.subheader("Alignment Results")
+    st.write("**Aligned Sequences:**")
+    st.text(aligned_seq1)
+    st.text(aligned_seq2)
+    st.write(f"**Alignment Score:** {matrix[len(seq1)][len(seq2)] if alignment_type == 'Global' else np.max(matrix)}")
+
+    st.write("**Scoring Matrix:**")
+    st.dataframe(matrix)
+
+    if alignment_type == "Global":
+        st.write("**Traceback Path:** Highlighted on scoring matrix (not implemented for simplicity in Streamlit).")
