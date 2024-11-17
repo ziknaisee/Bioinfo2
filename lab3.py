@@ -1,8 +1,8 @@
 import streamlit as st
 import numpy as np
 
-# Function to calculate the alignment score and matrix for global alignment
-def needleman_wunsch(seq1, seq2, match_score=1, mismatch_penalty=-1, gap_penalty=2):
+# Function to calculate the alignment score and matrix for global alignment (Needleman-Wunsch)
+def needleman_wunsch(seq1, seq2, match_score, mismatch_penalty, gap_penalty):
     n, m = len(seq1), len(seq2)
     matrix = np.zeros((n + 1, m + 1), dtype=int)
     backtrace = np.zeros((n + 1, m + 1), dtype=tuple)
@@ -31,7 +31,9 @@ def needleman_wunsch(seq1, seq2, match_score=1, mismatch_penalty=-1, gap_penalty
     # Traceback
     aligned_seq1, aligned_seq2 = "", ""
     i, j = n, m
+    path = []
     while i > 0 or j > 0:
+        path.append((i, j))
         if i > 0 and j > 0 and backtrace[i][j] == (i - 1, j - 1):
             aligned_seq1 = seq1[i - 1] + aligned_seq1
             aligned_seq2 = seq2[j - 1] + aligned_seq2
@@ -45,9 +47,9 @@ def needleman_wunsch(seq1, seq2, match_score=1, mismatch_penalty=-1, gap_penalty
             aligned_seq2 = seq2[j - 1] + aligned_seq2
             j -= 1
 
-    return matrix, aligned_seq1, aligned_seq2
+    return matrix, aligned_seq1, aligned_seq2, path
 
-# Function to calculate the alignment score and matrix for local alignment
+# Function to calculate the alignment score and matrix for local alignment (Smith-Waterman)
 def smith_waterman(seq1, seq2, match_score, mismatch_penalty, gap_penalty):
     n, m = len(seq1), len(seq2)
     matrix = np.zeros((n + 1, m + 1), dtype=int)
@@ -77,7 +79,9 @@ def smith_waterman(seq1, seq2, match_score, mismatch_penalty, gap_penalty):
     # Traceback
     aligned_seq1, aligned_seq2 = "", ""
     i, j = max_pos
+    path = []
     while matrix[i][j] > 0:
+        path.append((i, j))
         if backtrace[i][j] == (i - 1, j - 1):
             aligned_seq1 = seq1[i - 1] + aligned_seq1
             aligned_seq2 = seq2[j - 1] + aligned_seq2
@@ -91,7 +95,7 @@ def smith_waterman(seq1, seq2, match_score, mismatch_penalty, gap_penalty):
             aligned_seq2 = seq2[j - 1] + aligned_seq2
             j -= 1
 
-    return matrix, aligned_seq1, aligned_seq2
+    return matrix, aligned_seq1, aligned_seq2, path
 
 # Streamlit application
 st.title("Sequence Alignment")
@@ -106,10 +110,10 @@ alignment_algorithm = st.selectbox("Choose the alignment algorithm:", ("Needlema
 
 if st.button("Run Alignment"):
     if alignment_algorithm == "Needleman-Wunsch (Global)":
-        matrix, aligned_seq1, aligned_seq2 = needleman_wunsch(seq1, seq2, match_score, mismatch_penalty, gap_penalty)
+        matrix, aligned_seq1, aligned_seq2, path = needleman_wunsch(seq1, seq2, match_score, mismatch_penalty, gap_penalty)
         alignment_type = "Global Alignment (Needleman-Wunsch)"
     else:
-        matrix, aligned_seq1, aligned_seq2 = smith_waterman(seq1, seq2, match_score, mismatch_penalty, gap_penalty)
+        matrix, aligned_seq1, aligned_seq2, path = smith_waterman(seq1, seq2, match_score, mismatch_penalty, gap_penalty)
         alignment_type = "Local Alignment (Smith-Waterman)"
 
     st.subheader("Alignment Results")
@@ -121,4 +125,25 @@ if st.button("Run Alignment"):
     st.write(f"**Alignment Score:** {score}")
 
     st.write("**Scoring Matrix:**")
-    st.dataframe(matrix)
+    # Color-coding and arrows for the matrix visualization
+    matrix_html = "<table style='border-collapse: collapse;'>"
+    for i in range(len(matrix)):
+        matrix_html += "<tr>"
+        for j in range(len(matrix[i])):
+            color = "background-color: white;"  # Default color
+            if (i, j) in path:
+                color = "background-color: lightblue;"  # Highlight the path
+            matrix_html += f"<td style='border: 1px solid black; padding: 5px; {color}'>"
+            matrix_html += f"{matrix[i][j]}"
+            if i > 0 and j > 0:
+                if (i - 1, j - 1) in path:
+                    matrix_html += " &#8592;"  # Left-up arrow
+                elif (i - 1, j) in path:
+                    matrix_html += " &#8593;"  # Up arrow
+                elif (i, j - 1) in path:
+                    matrix_html += " &#8594;"  # Right arrow
+            matrix_html += "</td>"
+        matrix_html += "</tr>"
+    matrix_html += "</table>"
+
+    st.markdown(matrix_html, unsafe_allow_html=True)
