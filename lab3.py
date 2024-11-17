@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 
 # Function to calculate the alignment score and matrix for global alignment
-def needleman_wunsch(seq1, seq2, match_score, mismatch_penalty, gap_penalty):
+def needleman_wunsch(seq1, seq2, match_score=1, mismatch_penalty=-1, gap_penalty=2):
     n, m = len(seq1), len(seq2)
     matrix = np.zeros((n + 1, m + 1), dtype=int)
     backtrace = np.zeros((n + 1, m + 1), dtype=tuple)
