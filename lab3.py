@@ -71,16 +71,11 @@ def traceback_needleman_wunsch(seq1, seq2, matrix, match_score=1, mismatch_score
     return alignment_a, alignment_b, traceback_path
 
 # Highlight function for traceback path
-def highlight_traceback(data, traceback_path):
-    def style_cell(row, col):
-        return 'background-color: lightgreen;' if (row, col) in traceback_path else ''
-
-    # Create a DataFrame of styles
-    styles = pd.DataFrame(
-        [[style_cell(row, col) for col in range(data.shape[1])] for row in range(data.shape[0])],
-        index=data.index,
-        columns=data.columns
-    )
+# Highlight function for traceback path
+def highlight_traceback(df, traceback_path):
+    styles = pd.DataFrame("", index=df.index, columns=df.columns)
+    for (row, col) in traceback_path:
+        styles.iloc[row, col] = "background-color: lightgreen;"
     return styles
 
 # Streamlit app
@@ -115,7 +110,7 @@ if st.button("Align Sequences"):
 
         # Highlight the traceback
         styled_df = df_matrix.style.apply(
-            lambda x: highlight_traceback(df_matrix, traceback_path),
+            lambda _: highlight_traceback(df_matrix, traceback_path),
             axis=None
         )
 
