@@ -71,7 +71,6 @@ def traceback_needleman_wunsch(seq1, seq2, matrix, match_score=1, mismatch_score
     return alignment_a, alignment_b, traceback_path
 
 # Highlight function for traceback path
-# Highlight function for traceback path
 def highlight_traceback(df, traceback_path):
     styles = pd.DataFrame("", index=df.index, columns=df.columns)
     for (row, col) in traceback_path:
@@ -106,7 +105,8 @@ if st.button("Align Sequences"):
 
         # Display the alignment matrix
         st.write("Alignment Matrix:")
-        df_matrix = pd.DataFrame(matrix, index=["-"] + list(seq1), columns=["-"] + list(seq2))
+        # Ensure unique index and column names
+        df_matrix = pd.DataFrame(matrix, index=["-"] + [f"S1_{i}" for i in seq1], columns=["-"] + [f"S2_{j}" for j in seq2])
 
         # Highlight the traceback
         styled_df = df_matrix.style.apply(
