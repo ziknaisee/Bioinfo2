@@ -125,25 +125,32 @@ if st.button("Run Alignment"):
     st.write(f"**Alignment Score:** {score}")
 
     st.write("**Scoring Matrix:**")
-    # Color-coding and arrows for the matrix visualization
+    # Adding sequence labels to the top and left
     matrix_html = "<table style='border-collapse: collapse;'>"
+
+    # Add the first row with sequence 2 at the top
+    matrix_html += "<tr><td></td><td></td>"  # Empty cells for alignment
+    for char in seq2:
+        matrix_html += f"<td style='border: 1px solid black; padding: 5px; font-weight: bold;'>{char}</td>"
+    matrix_html += "</tr>"
+
+    # Add the matrix rows with sequence 1 on the left
     for i in range(len(matrix)):
         matrix_html += "<tr>"
+        if i == 0:
+            matrix_html += "<td></td>"  # Empty cell for alignment
+        else:
+            matrix_html += f"<td style='border: 1px solid black; padding: 5px; font-weight: bold;'>{seq1[i - 1]}</td>"
+
         for j in range(len(matrix[i])):
             color = "background-color: white;"  # Default color
             if (i, j) in path:
-                color = "background-color: lightblue;"  # Highlight the path
-            matrix_html += f"<td style='border: 1px solid black; padding: 5px; {color}'>"
-            matrix_html += f"{matrix[i][j]}"
-            if i > 0 and j > 0:
-                if (i - 1, j - 1) in path:
-                    matrix_html += " &#8592;"  # Left-up arrow
-                elif (i - 1, j) in path:
-                    matrix_html += " &#8593;"  # Up arrow
-                elif (i, j - 1) in path:
-                    matrix_html += " &#8594;"  # Right arrow
-            matrix_html += "</td>"
+                color = "background-color: lightblue;"  # Highlight the traceback path
+
+            # Add cell content with proper styling
+            matrix_html += f"<td style='border: 1px solid black; padding: 5px; {color}'>{matrix[i][j]}</td>"
         matrix_html += "</tr>"
+
     matrix_html += "</table>"
 
     st.markdown(matrix_html, unsafe_allow_html=True)
