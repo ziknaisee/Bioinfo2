@@ -50,52 +50,49 @@ def needleman_wunsch(seq1, seq2, match_score, mismatch_penalty, gap_penalty):
     return matrix, aligned_seq1, aligned_seq2, path
 
 # Streamlit application
-st.title("Sequence Alignment")
+st.title("Sequence Alignment Visualization")
 st.sidebar.header("Alignment Parameters")
-seq1 = st.text_input("Enter the first sequence:", "ACGTG")
-seq2 = st.text_input("Enter the second sequence:", "ACTG")
+
+# Input parameters
+seq1 = st.text_input("Enter the first sequence (Sequence 1):", "FKHMEDPLE")
+seq2 = st.text_input("Enter the second sequence (Sequence 2):", "FMDTPLNE")
 match_score = st.sidebar.number_input("Match score:", value=1, step=1)
 mismatch_penalty = st.sidebar.number_input("Mismatch penalty:", value=-1, step=1)
 gap_penalty = st.sidebar.number_input("Gap penalty:", value=-2, step=1)
 
-alignment_algorithm = st.selectbox("Choose the alignment algorithm:", ["Needleman-Wunsch (Global)"])
-
-if st.button("Run Alignment"):
+if st.button("Run Needleman-Wunsch Alignment"):
     matrix, aligned_seq1, aligned_seq2, path = needleman_wunsch(seq1, seq2, match_score, mismatch_penalty, gap_penalty)
-    alignment_type = "Global Alignment (Needleman-Wunsch)"
 
-    st.subheader("Alignment Results")
-    st.write(f"**{alignment_type}**")
-    st.write("**Aligned Sequences:**")
-    st.text(aligned_seq1)
-    st.text(aligned_seq2)
-    score = matrix[len(seq1)][len(seq2)]
-    st.write(f"**Alignment Score:** {score}")
+    # Display the scoring matrix
+    st.subheader("Scoring Matrix")
+    st.write("Sequences displayed outside the table")
 
-    # Create a scoring matrix table with Sequence 1 (vertical) and Sequence 2 (horizontal)
-    st.write("**Scoring Matrix with Sequences:**")
-    matrix_html = "<table style='border-collapse: collapse;'>"
-
-    # Add the header row with Sequence 2
-    matrix_html += "<tr><th></th><th></th>"  # Top-left corner (empty)
+    # HTML table for visualization
+    html = "<table style='border-collapse: collapse; text-align: center;'>"
+    html += "<tr><th></th><th></th>"  # Empty corner
     for char in seq2:
-        matrix_html += f"<th style='border: 1px solid black; padding: 5px;'>{char}</th>"
-    matrix_html += "</tr>"
+        html += f"<th style='border: 1px solid black; padding: 5px;'>{char}</th>"
+    html += "</tr>"
 
-    # Add rows with Sequence 1 along the side
     for i in range(len(matrix)):
+        html += "<tr>"
         if i == 0:
-            matrix_html += "<tr><th></th>"  # Empty top row
+            html += "<th></th>"  # Empty top-left corner
         else:
-            matrix_html += f"<tr><th style='border: 1px solid black; padding: 5px;'>{seq1[i - 1]}</th>"
+            html += f"<th style='border: 1px solid black; padding: 5px;'>{seq1[i - 1]}</th>"
 
         for j in range(len(matrix[i])):
-            color = "background-color: white;"  # Default cell color
+            color = "background-color: white;"
             if (i, j) in path:
-                color = "background-color: lightblue;"  # Highlight the alignment path
-            matrix_html += f"<td style='border: 1px solid black; padding: 5px; {color}'>"
-            matrix_html += f"{matrix[i][j]}</td>"
-        matrix_html += "</tr>"
-    matrix_html += "</table>"
+                color = "background-color: lightcoral;"  # Highlight path
+            html += f"<td style='border: 1px solid black; padding: 5px; {color}'>{matrix[i][j]}</td>"
+        html += "</tr>"
 
-    st.markdown(matrix_html, unsafe_allow_html=True)
+    html += "</table>"
+    st.markdown(html, unsafe_allow_html=True)
+
+    st.subheader("Aligned Sequences")
+    st.text(f"Sequence 1: {aligned_seq1}")
+    st.text(f"Sequence 2: {aligned_seq2}")
+
+    st.write(f"**Alignment Score:** {matrix[len(seq1)][len(seq2)]}")
