@@ -49,106 +49,50 @@ def needleman_wunsch(seq1, seq2, match_score, mismatch_penalty, gap_penalty):
 
     return matrix, aligned_seq1, aligned_seq2, path
 
-# Function to calculate the alignment score and matrix for local alignment (Smith-Waterman)
-def smith_waterman(seq1, seq2, match_score, mismatch_penalty, gap_penalty):
-    n, m = len(seq1), len(seq2)
-    matrix = np.zeros((n + 1, m + 1), dtype=int)
-    backtrace = np.zeros((n + 1, m + 1), dtype=tuple)
-
-    # Fill the matrix
-    max_score = 0
-    max_pos = None
-    for i in range(1, n + 1):
-        for j in range(1, m + 1):
-            match = matrix[i - 1][j - 1] + (match_score if seq1[i - 1] == seq2[j - 1] else mismatch_penalty)
-            delete = matrix[i - 1][j] + gap_penalty
-            insert = matrix[i][j - 1] + gap_penalty
-            matrix[i][j] = max(0, match, delete, insert)
-
-            if matrix[i][j] == match:
-                backtrace[i][j] = (i - 1, j - 1)
-            elif matrix[i][j] == delete:
-                backtrace[i][j] = (i - 1, j)
-            elif matrix[i][j] == insert:
-                backtrace[i][j] = (i, j - 1)
-
-            if matrix[i][j] > max_score:
-                max_score = matrix[i][j]
-                max_pos = (i, j)
-
-    # Traceback
-    aligned_seq1, aligned_seq2 = "", ""
-    i, j = max_pos
-    path = []
-    while matrix[i][j] > 0:
-        path.append((i, j))
-        if backtrace[i][j] == (i - 1, j - 1):
-            aligned_seq1 = seq1[i - 1] + aligned_seq1
-            aligned_seq2 = seq2[j - 1] + aligned_seq2
-            i, j = i - 1, j - 1
-        elif backtrace[i][j] == (i - 1, j):
-            aligned_seq1 = seq1[i - 1] + aligned_seq1
-            aligned_seq2 = "-" + aligned_seq2
-            i -= 1
-        else:
-            aligned_seq1 = "-" + aligned_seq1
-            aligned_seq2 = seq2[j - 1] + aligned_seq2
-            j -= 1
-
-    return matrix, aligned_seq1, aligned_seq2, path
-
 # Streamlit application
-st.title("Sequence Alignment")
+st.title("Sequence Alignment Visualization")
 st.sidebar.header("Alignment Parameters")
-seq1 = st.text_input("Enter the first sequence:", "ACGTG")
-seq2 = st.text_input("Enter the second sequence:", "ACTG")
+
+# Input parameters
+seq1 = st.text_input("Enter the first sequence (Sequence 1):", "FKHMEDPLE")
+seq2 = st.text_input("Enter the second sequence (Sequence 2):", "FMDTPLNE")
 match_score = st.sidebar.number_input("Match score:", value=1, step=1)
 mismatch_penalty = st.sidebar.number_input("Mismatch penalty:", value=-1, step=1)
 gap_penalty = st.sidebar.number_input("Gap penalty:", value=-2, step=1)
 
-alignment_algorithm = st.selectbox("Choose the alignment algorithm:", ("Needleman-Wunsch (Global)", "Smith-Waterman (Local)"))
+if st.button("Run Needleman-Wunsch Alignment"):
+    matrix, aligned_seq1, aligned_seq2, path = needleman_wunsch(seq1, seq2, match_score, mismatch_penalty, gap_penalty)
 
-if st.button("Run Alignment"):
-    if alignment_algorithm == "Needleman-Wunsch (Global)":
-        matrix, aligned_seq1, aligned_seq2, path = needleman_wunsch(seq1, seq2, match_score, mismatch_penalty, gap_penalty)
-        alignment_type = "Global Alignment (Needleman-Wunsch)"
-    else:
-        matrix, aligned_seq1, aligned_seq2, path = smith_waterman(seq1, seq2, match_score, mismatch_penalty, gap_penalty)
-        alignment_type = "Local Alignment (Smith-Waterman)"
+    # Display the scoring matrix
+    st.subheader("Scoring Matrix")
+    st.write("Sequences displayed outside the table")
 
-    st.subheader("Alignment Results")
-    st.write(f"**{alignment_type}**")
-    st.write("**Aligned Sequences:**")
-    st.text(aligned_seq1)
-    st.text(aligned_seq2)
-    score = matrix[len(seq1)][len(seq2)] if alignment_algorithm == "Needleman-Wunsch (Global)" else np.max(matrix)
-    st.write(f"**Alignment Score:** {score}")
+    # HTML table for visualization
+    html = "<table style='border-collapse: collapse; text-align: center;'>"
+    html += "<tr><th></th><th></th>"  # Empty corner
+    for char in seq2:
+        html += f"<th style='border: 1px solid black; padding: 5px;'>{char}</th>"
+    html += "</tr>"
 
-    # Display sequences outside the scoring matrix
-    st.write("**Sequence 1:**", seq1)
-    st.write("**Sequence 2:**", seq2)
-
-    st.write("**Scoring Matrix:**")
-    # Color-coding and arrows for the matrix visualization
-    matrix_html = "<table style='border-collapse: collapse;'>"
-    st.write("**Sequence 1:**", seq1)
     for i in range(len(matrix)):
-        matrix_html += "<tr>"
-        for j in range(len(matrix[i])):
-            color = "background-color: white;"  # Default color
-            if (i, j) in path:
-                color = "background-color: lightblue;"  # Highlight the path
-            matrix_html += f"<td style='border: 1px solid black; padding: 5px; {color}'>"
-            matrix_html += f"{matrix[i][j]}"
-            if i > 0 and j > 0:
-                if (i - 1, j - 1) in path:
-                    matrix_html += " &#8592;"  # Left-up arrow
-                elif (i - 1, j) in path:
-                    matrix_html += " &#8593;"  # Up arrow
-                elif (i, j - 1) in path:
-                    matrix_html += " &#8594;"  # Right arrow
-            matrix_html += "</td>"
-        matrix_html += "</tr>"
-    matrix_html += "</table>"
+        html += "<tr>"
+        if i == 0:
+            html += "<th></th>"  # Empty top-left corner
+        else:
+            html += f"<th style='border: 1px solid black; padding: 5px;'>{seq1[i - 1]}</th>"
 
-    st.markdown(matrix_html, unsafe_allow_html=True)
+        for j in range(len(matrix[i])):
+            color = "background-color: white;"
+            if (i, j) in path:
+                color = "background-color: lightcoral;"  # Highlight path
+            html += f"<td style='border: 1px solid black; padding: 5px; {color}'>{matrix[i][j]}</td>"
+        html += "</tr>"
+
+    html += "</table>"
+    st.markdown(html, unsafe_allow_html=True)
+
+    st.subheader("Aligned Sequences")
+    st.text(f"Sequence 1: {aligned_seq1}")
+    st.text(f"Sequence 2: {aligned_seq2}")
+
+    st.write(f"**Alignment Score:** {matrix[len(seq1)][len(seq2)]}")
