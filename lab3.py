@@ -65,6 +65,10 @@ def smith_waterman(seq1, seq2, match_score, mismatch_penalty, gap_penalty):
             insert = matrix[i][j - 1] + gap_penalty
             matrix[i][j] = max(0, match, delete, insert)
 
+            if matrix[i][j] > max_score:
+                max_score = matrix[i][j]
+                max_pos = (i, j)
+
             if matrix[i][j] == match:
                 backtrace[i][j] = (i - 1, j - 1)
             elif matrix[i][j] == delete:
@@ -72,28 +76,25 @@ def smith_waterman(seq1, seq2, match_score, mismatch_penalty, gap_penalty):
             elif matrix[i][j] == insert:
                 backtrace[i][j] = (i, j - 1)
 
-            if matrix[i][j] > max_score:
-                max_score = matrix[i][j]
-                max_pos = (i, j)
-
     # Traceback
     aligned_seq1, aligned_seq2 = "", ""
-    i, j = max_pos
     path = []
-    while matrix[i][j] > 0:
-        path.append((i, j))
-        if backtrace[i][j] == (i - 1, j - 1):
-            aligned_seq1 = seq1[i - 1] + aligned_seq1
-            aligned_seq2 = seq2[j - 1] + aligned_seq2
-            i, j = i - 1, j - 1
-        elif backtrace[i][j] == (i - 1, j):
-            aligned_seq1 = seq1[i - 1] + aligned_seq1
-            aligned_seq2 = "-" + aligned_seq2
-            i -= 1
-        else:
-            aligned_seq1 = "-" + aligned_seq1
-            aligned_seq2 = seq2[j - 1] + aligned_seq2
-            j -= 1
+    if max_pos:
+        i, j = max_pos
+        while matrix[i][j] > 0:
+            path.append((i, j))
+            if backtrace[i][j] == (i - 1, j - 1):
+                aligned_seq1 = seq1[i - 1] + aligned_seq1
+                aligned_seq2 = seq2[j - 1] + aligned_seq2
+                i, j = i - 1, j - 1
+            elif backtrace[i][j] == (i - 1, j):
+                aligned_seq1 = seq1[i - 1] + aligned_seq1
+                aligned_seq2 = "-" + aligned_seq2
+                i -= 1
+            else:
+                aligned_seq1 = "-" + aligned_seq1
+                aligned_seq2 = seq2[j - 1] + aligned_seq2
+                j -= 1
 
     return matrix, aligned_seq1, aligned_seq2, path
 
@@ -121,7 +122,7 @@ if st.button("Run Alignment"):
     st.write("**Aligned Sequences:**")
     st.text(aligned_seq1)
     st.text(aligned_seq2)
-    score = matrix[len(seq1)][len(seq2)] if alignment_algorithm == "Needleman-Wunsch (Global)" else np.max(matrix)
+    score = np.max(matrix) if alignment_algorithm == "Smith-Waterman (Local)" else matrix[len(seq1)][len(seq2)]
     st.write(f"**Alignment Score:** {score}")
 
     # Display sequences outside the scoring matrix
@@ -139,13 +140,6 @@ if st.button("Run Alignment"):
                 color = "background-color: lightblue;"  # Highlight the path
             matrix_html += f"<td style='border: 1px solid black; padding: 5px; {color}'>"
             matrix_html += f"{matrix[i][j]}"
-            if i > 0 and j > 0:
-                if (i - 1, j - 1) in path:
-                    matrix_html += " &#8592;"  # Left-up arrow
-                elif (i - 1, j) in path:
-                    matrix_html += " &#8593;"  # Up arrow
-                elif (i, j - 1) in path:
-                    matrix_html += " &#8594;"  # Right arrow
             matrix_html += "</td>"
         matrix_html += "</tr>"
     matrix_html += "</table>"
