@@ -132,6 +132,7 @@ if st.button("Run Alignment"):
     # Color-coding and arrows for the matrix visualization
     matrix_html = "<table style='border-collapse: collapse;'>"
     for i in range(len(matrix)):
+        st.write("**Sequence 1:**", seq1)
         matrix_html += "<tr>"
         for j in range(len(matrix[i])):
             color = "background-color: white;"  # Default color
